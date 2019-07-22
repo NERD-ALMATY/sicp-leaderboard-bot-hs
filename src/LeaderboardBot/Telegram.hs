@@ -12,6 +12,7 @@ import           Control.Monad.Reader             (liftIO)
 import           Data.Text                        (Text)
 import qualified Data.Text                        as Text
 import qualified Telegram.Bot.API                 as Telegram
+import           Telegram.Bot.API.Methods         (ParseMode (..))
 import           Telegram.Bot.Simple
 import           Telegram.Bot.Simple.Debug
 import           Telegram.Bot.Simple.UpdateParser
@@ -54,6 +55,10 @@ initModel = Model EmptyItem
 addModel :: Model
 addModel = Model AddItem
 
+replyWithMarkdown :: Text -> BotM ()
+replyWithMarkdown !txt =
+  reply $! ReplyMessage txt (Just Markdown) Nothing Nothing Nothing Nothing
+
 startMessage :: Text
 startMessage = Text.unlines
   [ "This is a LeaderBoard Bot"
@@ -80,8 +85,8 @@ handleAction action model = case action of
     replyText startMessage
     pure NoAction
   AddRepo  -> addModel <# do
-    replyText "Which repository you want to add?\n\
-      \Please give in format \"username repository_name\""
+    replyWithMarkdown "Which repository you want to add?\n\
+      \Please send in format -> `username repository_name`"
     pure NoAction
   UserUpdate txt -> model <# do
     if model == addModel then do
@@ -93,7 +98,7 @@ handleAction action model = case action of
           let !userConf = BotConfig (name_, repo_, "/")
           !num_ <- liftIO $ runLeaderBoardM defaultLB userConf
           case num_ of
-            Left err_ -> replyText $ "Error\n" <> err_
+            Left err_ -> replyWithMarkdown $ "*Error*\n" <> err_
             Right num -> do
               replyText $ Text.pack $ show num
               fName_ <- liftIO $ fullUserName name_
