@@ -85,18 +85,25 @@ handleAction action model = case action of
     pure NoAction
   UserUpdate txt -> model <# do
     if model == addModel then do
-      -- replyText (txt <> " !!")
       let nameAndRepo_ = case Text.words txt of
                            (x:xs:[]) -> Just (x, xs)
                            _         -> Nothing
       case nameAndRepo_ of
         Just (name_, repo_) -> do
           let !userConf = BotConfig (name_, repo_, "/")
-          num <- liftIO $ runLeaderBoardM defaultLB userConf
-          replyText $ Text.pack $ show num
+          !num_ <- liftIO $ runLeaderBoardM defaultLB userConf
+          case num_ of
+            Left err_ -> replyText $ "Error\n" <> err_
+            Right num -> do
+              replyText $ Text.pack $ show num
+              fName_ <- liftIO $ fullUserName name_
+              case fName_ of
+                Right x -> replyText x
+                Left  x -> replyText x
         _                   -> replyText "Incorrect input"
+
     else
-      replyText "Nothing added | UserUpdate"
+      liftIO $ putStrLn "Nothing added | UserUpdate"
     pure Reset
   Reg  -> addModel <# pure NoAction
   _    -> initModel <# pure NoAction

@@ -3,17 +3,20 @@
 {-# LANGUAGE OverloadedStrings          #-}
 
 module LeaderboardBot.Internal
-  (BotConfig(..), LeaderBoardM(..), runLeaderBoardM, defaultLB, BotField(..))
+  (BotConfig(..), LeaderBoardM(..), runLeaderBoardM, defaultLB, BotField(..)
+  , fullUserName)
   where
 
 import           Control.Monad.Reader
 import           Data.Text                       (Text, takeEnd)
-import qualified Data.Text                       as T (length)
+import qualified Data.Text                       as T (length, pack)
 import qualified Data.Vector                     as V
 import           Database.SQLite.Simple
 import           Database.SQLite.Simple.FromRow  ()
+import           GitHub.Data.Definitions         (User (..))
 import           GitHub.Data.Name                (Name (..))
 import qualified GitHub.Endpoints.Repos.Contents as Git
+import           GitHub.Endpoints.Users          (userInfoFor)
 
 -- | Type for DB
 -- username | first and lastname | score
@@ -79,13 +82,22 @@ countExt urp@(BotConfig (user_, repo_, _)) (Git.ContentDirectory !items) = do
     -- Only Scheme and Racket allowed
     compareExts txt = takeEnd 4 txt == ".scm" || takeEnd 4 txt == ".rkt"
 
-defaultLB :: LeaderBoardM Int
+defaultLB :: LeaderBoardM (Either Text Int)
 defaultLB = do
   urp@(BotConfig (user_, repo_, path_)) <- ask
   !possibleRepo <- liftIO $ contentsForTemp user_ repo_ path_
 
   case possibleRepo of
-    Left  !err  -> liftIO (putStrLn $ show $ err) >> pure 0
+    Left  !err  -> pure $ Left $! T.pack $! show $! err
     Right !repo -> do
       !num <- liftIO $ countExt urp repo
-      pure num
+      pure $ Right num
+
+fullUserName :: Text -> IO (Either Text Text)
+fullUserName txt = do
+  name_ <- userInfoFor (N txt)
+  case name_ of
+    Left err_  -> pure $ Left $ T.pack $! show err_
+    Right name -> case userName name of
+                    Just name' -> pure $ Right name'
+                    Nothing    -> pure $ Left "Not found a full username"
