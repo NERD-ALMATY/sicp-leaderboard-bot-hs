@@ -2,7 +2,6 @@
 
 module Main where
 
--- import           LeaderboardBot.Internal
 import           LeaderboardBot.Telegram
 
 import           Telegram.Bot.Simple

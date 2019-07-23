@@ -72,9 +72,8 @@ countExt urp@(BotConfig (user_, repo_, _)) (Git.ContentDirectory !items) = do
                          !possibleRepo <- contentsForTemp
                              user_ repo_
                              (Git.contentPath $ Git.contentItemInfo item)
-                         case possibleRepo of
-                           Left  _ -> pure 0
-                           Right !repo -> countExt urp repo
+                         either
+                           (\_ -> pure 0) (\r -> countExt urp r) possibleRepo
 
     getFileExt_ !file_ = if 5 <= T.length file_ &&
                             compareExts file_
@@ -98,6 +97,6 @@ fullUserName txt = do
   name_ <- userInfoFor (N txt)
   case name_ of
     Left err_  -> pure $ Left $ T.pack $! show err_
-    Right name -> case userName name of
-                    Just name' -> pure $ Right name'
-                    Nothing    -> pure $ Left "Not found a full username"
+    Right name -> pure $
+      maybe (Left "Not found a full username") Right $ userName name
+

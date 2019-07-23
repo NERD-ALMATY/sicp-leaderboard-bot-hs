@@ -101,11 +101,9 @@ handleAction action model = case action of
             Left err_ -> replyWithMarkdown $ "*Error*\n" <> err_
             Right num -> do
               replyText $ Text.pack $ show num
-              fName_ <- liftIO $ fullUserName name_
-              case fName_ of
-                Right x -> replyText x
-                Left  x -> replyText x
-        _                   -> replyText "Incorrect input"
+              fullName_ <- liftIO $ fullUserName name_
+              either replyText replyText fullName_
+        _                   -> replyWithMarkdown "*Incorrect input*"
 
     else
       liftIO $ putStrLn "Nothing added | UserUpdate"
