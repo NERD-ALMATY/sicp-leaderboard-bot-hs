@@ -3,6 +3,7 @@
 
 module LeaderboardBot.Telegram where
 
+import           LeaderboardBot.Database
 import           LeaderboardBot.Internal
 
 import           Control.Applicative              ((<|>))
@@ -11,6 +12,7 @@ import           Data.Monoid                      ((<>))
 import           Control.Monad.Reader             (liftIO)
 import           Data.Text                        (Text)
 import qualified Data.Text                        as Text
+import qualified Data.Text.IO                     as Text (putStrLn)
 import qualified Telegram.Bot.API                 as Telegram
 import           Telegram.Bot.API.Methods         (ParseMode (..))
 import           Telegram.Bot.Simple
@@ -34,7 +36,7 @@ data Action
   | Start
   | AddRepo
   | UpdateRepo
-  | ShowBoard
+  | Stats
   | Reset
   | Reg
   | UserUpdate !Text
@@ -72,7 +74,7 @@ handleUpdate :: Model -> Telegram.Update -> Maybe Action
 handleUpdate _ = parseUpdate
   $ Start <$ command "start"
   <|> AddRepo <$ command "add"
-  <|> ShowBoard <$ (command "show" <|> command "show_board")
+  <|> Stats <$ (command "stats" <|> command "show_board")
   <|> UpdateRepo <$ (command "update")
   <|> Reg <$ (command "reg")
   <|> UserUpdate <$> text
@@ -102,14 +104,22 @@ handleAction action model = case action of
             Right num -> do
               replyText $ Text.pack $ show num
               fullName_ <- liftIO $ fullUserName name_
-              either replyText replyText fullName_
+              -- either replyText replyText fullName_
+              case fullName_ of
+                Left fname_  -> replyText fname_
+                Right fname_ -> liftIO $
+                 firstDbConnection $ BotField name_ fname_ num
         _                   -> replyWithMarkdown "*Incorrect input*"
 
     else
-      liftIO $ putStrLn "Nothing added | UserUpdate"
+      liftIO $ Text.putStrLn $! "Nothing added -> " <> txt
     pure Reset
-  Reg  -> addModel <# pure NoAction
-  _    -> initModel <# pure NoAction
+  Stats -> initModel <# do
+    stats <- liftIO $ fetchStats
+    replyWithMarkdown $ ppStats $ stats
+    pure NoAction
+  Reg   -> addModel <# pure NoAction
+  _     -> initModel <# pure NoAction
 
 run :: Telegram.Token -> IO ()
 run !token = do
