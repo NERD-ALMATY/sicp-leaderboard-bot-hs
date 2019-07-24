@@ -111,7 +111,7 @@ handleAction action model = case action of
                 Left fname_  -> replyText fname_
                 Right fname_ -> liftIO
                  (firstDbConnection $ BotField name_ fname_ repo_ num)
-                 >> replyWithMarkdown "`Ok.`"
+                 >> replyWithMarkdown "*Ok.*"
 
         _                   -> replyWithMarkdown "*Incorrect input*"
 
@@ -125,9 +125,7 @@ handleAction action model = case action of
     pure NoAction
   UpdateRepo -> initModel <# do
     liftIO $ updateStats
-    !stats <- liftIO $ fetchStats
-    replyWithMarkdown $ ppStats $ stats
-    pure NoAction
+    pure Stats
 
 run :: Telegram.Token -> IO ()
 run !token = do

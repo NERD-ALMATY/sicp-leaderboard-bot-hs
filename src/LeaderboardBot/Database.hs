@@ -1,7 +1,9 @@
 {-# LANGUAGE BangPatterns      #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module LeaderboardBot.Database where
+module LeaderboardBot.Database
+  (firstDbConnection, fetchStats, ppStats, updateStats)
+  where
 
 import           LeaderboardBot.Internal
 
@@ -35,8 +37,8 @@ fetchStats = do
 ppStats :: [BotField] -> Text
 ppStats = T.concat . map go
   where
-    go !(BotField !name_ !flName_ _ !score_) = "*" <> name_ <> "*\t" <> flName_ <>
-      "\t*" <> (T.pack $ show score_) <> "*\n"
+    go !(BotField !name_ !flName_ _ !score_) = "*" <> name_ <> "*\t"
+      <> flName_ <> "\t*" <> (T.pack $ show score_) <> "*\n"
 
 updateStats :: IO ()
 updateStats = do
@@ -47,11 +49,14 @@ updateStats = do
   close conn
 
 updateStats_ :: Connection -> BotField -> IO ()
-updateStats_ !conn (BotField !user_ _ !repo_ _) = do
+updateStats_ !conn (BotField !user_ _ !repo_ !score_) = do
   let !userConf = BotConfig (user_, repo_, "/")
   !num_ <- runLeaderBoardM defaultLB userConf
   case num_ of
     Left err  -> T.putStrLn err
     Right num ->
-      execute conn "UPDATE board SET score = (?) WHERE username = (?)"
-        (num, user_)
+      if score_ /= num then
+        execute conn "UPDATE board SET score = (?) WHERE username = (?)"
+          (num, user_)
+      else
+        pure ()
