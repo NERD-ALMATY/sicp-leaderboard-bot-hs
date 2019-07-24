@@ -19,15 +19,16 @@ import qualified GitHub.Endpoints.Repos.Contents as Git
 import           GitHub.Endpoints.Users          (userInfoFor)
 
 -- | Type for DB
--- username | first and lastname | score
-data BotField = BotField !Text !Text !Int
+-- username | first and lastname | repo | score
+data BotField = BotField !Text !Text !Text !Int
   deriving Show
 
 instance FromRow BotField where
-  fromRow = BotField <$> field <*> field <*> field
+  fromRow = BotField <$> field <*> field <*> field <*> field
 
 instance ToRow BotField where
-  toRow (BotField nick_ name_ score_) = toRow (nick_, name_, score_)
+  toRow (BotField nick_ name_ repo_ score_) =
+    toRow (nick_, name_, repo_, score_)
 
 -- |  User / Repo / Path
 data BotConfig = BotConfig !(Text, Text, Text)
@@ -99,4 +100,3 @@ fullUserName txt = do
     Left err_  -> pure $ Left $ T.pack $! show err_
     Right name -> pure $
       maybe (Left "Not found a full username") Right $ userName name
-

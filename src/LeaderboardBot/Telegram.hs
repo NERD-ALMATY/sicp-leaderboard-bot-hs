@@ -38,7 +38,6 @@ data Action
   | UpdateRepo
   | Stats
   | Reset
-  | Reg
   | UserUpdate !Text
   deriving Show
 
@@ -63,10 +62,13 @@ replyWithMarkdown !txt =
 
 startMessage :: Text
 startMessage = Text.unlines
-  [ "This is a LeaderBoard Bot"
+  [ " ``` This is a LeaderBoard Bot ``` "
   , ""
-  , "Use /reg to sign up"
+  , "Use /add to add your repo"
   , ""
+  , "Use /stats to get stats"
+  , ""
+  , "Use /update to update stats"
   ]
 
 -- | Process incoming Updates and turn them into Actions
@@ -76,7 +78,6 @@ handleUpdate _ = parseUpdate
   <|> AddRepo <$ command "add"
   <|> Stats <$ (command "stats" <|> command "show_board")
   <|> UpdateRepo <$ (command "update")
-  <|> Reg <$ (command "reg")
   <|> UserUpdate <$> text
 
 handleAction :: Action -> Model -> Eff Action Model
@@ -84,13 +85,14 @@ handleAction action model = case action of
   NoAction -> pure model
   Reset    -> initModel <# pure NoAction
   Start    -> initModel <# do
-    replyText startMessage
+    replyWithMarkdown startMessage
     pure NoAction
   AddRepo  -> addModel <# do
     replyWithMarkdown "Which repository you want to add?\n\
-      \Please send in format -> `username repository_name`"
+      \Please send in format\n`username repository_name`"
     pure NoAction
   UserUpdate txt -> model <# do
+
     if model == addModel then do
       let nameAndRepo_ = case Text.words txt of
                            (x:xs:[]) -> Just (x, xs)
@@ -100,26 +102,32 @@ handleAction action model = case action of
           let !userConf = BotConfig (name_, repo_, "/")
           !num_ <- liftIO $ runLeaderBoardM defaultLB userConf
           case num_ of
-            Left err_ -> replyWithMarkdown $ "*Error*\n" <> err_
+            Left err_ -> do
+              replyWithMarkdown $ "*Error*\n" <> err_
+              liftIO $ Text.putStrLn err_
             Right num -> do
-              replyText $ Text.pack $ show num
-              fullName_ <- liftIO $ fullUserName name_
-              -- either replyText replyText fullName_
+              !fullName_ <- liftIO $ fullUserName name_
               case fullName_ of
                 Left fname_  -> replyText fname_
-                Right fname_ -> liftIO $
-                 firstDbConnection $ BotField name_ fname_ num
+                Right fname_ -> liftIO
+                 (firstDbConnection $ BotField name_ fname_ repo_ num)
+                 >> replyWithMarkdown "`Ok.`"
+
         _                   -> replyWithMarkdown "*Incorrect input*"
 
     else
       liftIO $ Text.putStrLn $! "Nothing added -> " <> txt
+
     pure Reset
-  Stats -> initModel <# do
-    stats <- liftIO $ fetchStats
+  Stats      -> initModel <# do
+    !stats <- liftIO $ fetchStats
     replyWithMarkdown $ ppStats $ stats
     pure NoAction
-  Reg   -> addModel <# pure NoAction
-  _     -> initModel <# pure NoAction
+  UpdateRepo -> initModel <# do
+    liftIO $ updateStats
+    !stats <- liftIO $ fetchStats
+    replyWithMarkdown $ ppStats $ stats
+    pure NoAction
 
 run :: Telegram.Token -> IO ()
 run !token = do
