@@ -95,8 +95,8 @@ defaultLB = do
 
 fullUserName :: Text -> IO (Either Text Text)
 fullUserName txt = do
-  name_ <- userInfoFor (N txt)
+  !name_ <- userInfoFor (N txt)
   case name_ of
-    Left err_  -> pure $ Left $ T.pack $! show err_
-    Right name -> pure $
+    Left !err_  -> pure $ Left $ T.pack $! show err_
+    Right !name -> pure $
       maybe (Left "Not found a full username") Right $ userName name

@@ -14,6 +14,6 @@ else
   fi
 fi
 
-cabal build
+cabal new-build
 
 

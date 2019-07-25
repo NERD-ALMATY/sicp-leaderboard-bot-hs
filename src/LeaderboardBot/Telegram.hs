@@ -21,7 +21,7 @@ import           Telegram.Bot.Simple.UpdateParser
 
 data TodoItem
   = AddItem
-  | ShowItem
+  | StatsItem
   | EmptyItem
   deriving (Show, Eq)
 
@@ -56,6 +56,9 @@ initModel = Model EmptyItem
 addModel :: Model
 addModel = Model AddItem
 
+statsModel :: Model
+statsModel = Model StatsItem
+
 replyWithMarkdown :: Text -> BotM ()
 replyWithMarkdown !txt =
   reply $! ReplyMessage txt (Just Markdown) Nothing Nothing Nothing Nothing
@@ -83,7 +86,7 @@ handleUpdate _ = parseUpdate
 handleAction :: Action -> Model -> Eff Action Model
 handleAction action model = case action of
   NoAction -> pure model
-  Reset    -> initModel <# pure NoAction
+  Reset    -> statsModel <# pure NoAction
   Start    -> initModel <# do
     replyWithMarkdown startMessage
     pure NoAction
@@ -119,13 +122,21 @@ handleAction action model = case action of
       liftIO $ Text.putStrLn $! "Nothing added -> " <> txt
 
     pure Reset
-  Stats      -> initModel <# do
-    !stats <- liftIO $ fetchStats
-    replyWithMarkdown $ ppStats $ stats
-    pure NoAction
-  UpdateRepo -> initModel <# do
-    liftIO $ updateStats
-    pure Stats
+  Stats      -> model <#
+    if model == statsModel then do
+      !stats <- liftIO $ fetchStats
+      replyWithMarkdown $ ppStats $ stats
+      pure Reset
+    else do
+      replyWithMarkdown "*There is no added repos.*"
+      pure NoAction
+  UpdateRepo -> model <#
+    if model == statsModel then do
+      liftIO $ updateStats
+      pure Stats
+    else do
+      replyWithMarkdown "*There is no added repos.*"
+      pure NoAction
 
 run :: Telegram.Token -> IO ()
 run !token = do
