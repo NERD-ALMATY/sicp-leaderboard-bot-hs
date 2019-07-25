@@ -7,6 +7,8 @@ module LeaderboardBot.Database
 
 import           LeaderboardBot.Internal
 
+import           Control.Exception
+
 import           Data.Monoid                    ((<>))
 import           Data.Text                      (Text)
 import qualified Data.Text                      as T
@@ -17,7 +19,9 @@ import           Database.SQLite.Simple.FromRow
 
 firstDbConnection :: BotField -> IO ()
 firstDbConnection bField = do
-  !conn <- open "data/board.db"
+  conn <- catch (open "data/board.db") $ \e -> do
+    print (e :: IOException)
+    throwIO e
   execute_ conn "CREATE TABLE IF NOT EXISTS board \
     \(id INTEGER PRIMARY KEY, username TEXT, \
     \fullname TEXT, repo TEXT, score INTEGER)"

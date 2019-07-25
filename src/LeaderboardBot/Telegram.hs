@@ -65,7 +65,7 @@ replyWithMarkdown !txt =
 
 startMessage :: Text
 startMessage = Text.unlines
-  [ " ``` This is a LeaderBoard Bot ``` "
+  [ " ``` This is a SICP LeaderBoard Bot ``` "
   , ""
   , "Use /add to add your repo"
   , ""
