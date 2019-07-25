@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-#
 
 if ! [ -d data ]; then
   echo "mkdir data" && \
@@ -14,6 +13,8 @@ else
   fi
 fi
 
+
+# cabal executable must be in $PATH
 cabal new-build
 
 
