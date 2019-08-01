@@ -12,15 +12,14 @@ import           Control.Exception
 import           Data.Monoid                    ((<>))
 import           Data.Text                      (Text)
 import qualified Data.Text                      as T
-import qualified Data.Text.IO                   as T (putStrLn)
 import           Database.SQLite.Simple
 import           Database.SQLite.Simple.FromRow
 
 
 firstDbConnection :: BotField -> IO ()
 firstDbConnection bField = do
-  conn <- catch (open "data/board.db") $ \e -> do
-    print (e :: IOException)
+  !conn <- catch (open "data/board.db") $ \e -> do
+    putLogStrLn $ T.pack $ show (e :: IOException)
     throwIO e
   execute_ conn "CREATE TABLE IF NOT EXISTS board \
     \(id INTEGER PRIMARY KEY, username TEXT, \
@@ -31,7 +30,9 @@ firstDbConnection bField = do
 
 fetchStats :: IO [BotField]
 fetchStats = do
-  !conn <- open "data/board.db"
+  !conn <- catch (open "data/board.db") $ \e -> do
+    putLogStrLn $ T.pack $ show (e :: IOException)
+    throwIO e
   !r <- query_ conn "SELECT username, fullname, repo, score FROM board \
     \ORDER BY score DESC" :: IO [BotField]
   close conn
@@ -57,7 +58,7 @@ updateStats_ !conn (BotField !user_ _ !repo_ !score_) = do
   let !userConf = BotConfig (user_, repo_, "/")
   !num_ <- runLeaderBoardM defaultLB userConf
   case num_ of
-    Left err  -> T.putStrLn err
+    Left err  -> putLogStrLn err
     Right num ->
       if score_ /= num then
         execute conn "UPDATE board SET score = (?) WHERE username = (?)"

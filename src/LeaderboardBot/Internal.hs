@@ -4,12 +4,16 @@
 
 module LeaderboardBot.Internal
   (BotConfig(..), LeaderBoardM(..), runLeaderBoardM, defaultLB, BotField(..)
-  , fullUserName)
+  , fullUserName, putLogStrLn)
   where
+
+import           Data.Monoid                     ((<>))
 
 import           Control.Monad.Reader
 import           Data.Text                       (Text, takeEnd)
 import qualified Data.Text                       as T (length, pack)
+import qualified Data.Text.IO                    as T (putStrLn)
+import           Data.Time.Clock
 import qualified Data.Vector                     as V
 import           Database.SQLite.Simple
 import           Database.SQLite.Simple.FromRow  ()
@@ -29,6 +33,13 @@ instance FromRow BotField where
 instance ToRow BotField where
   toRow (BotField nick_ name_ repo_ score_) =
     toRow (nick_, name_, repo_, score_)
+
+-- | Logging to stdout
+putLogStrLn :: Text -> IO ()
+putLogStrLn txt = do
+  time_ <- getCurrentTime
+  T.putStrLn $ "| " <> (T.pack $ show time_) <> " | " <> txt <>
+    " ..|"
 
 -- |  User / Repo / Path
 data BotConfig = BotConfig !(Text, Text, Text)

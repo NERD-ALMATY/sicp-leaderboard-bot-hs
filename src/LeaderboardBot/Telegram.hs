@@ -12,7 +12,6 @@ import           Data.Monoid                      ((<>))
 import           Control.Monad.Reader             (liftIO)
 import           Data.Text                        (Text)
 import qualified Data.Text                        as Text
-import qualified Data.Text.IO                     as Text (putStrLn)
 import qualified Telegram.Bot.API                 as Telegram
 import           Telegram.Bot.API.Methods         (ParseMode (..))
 import           Telegram.Bot.Simple
@@ -107,19 +106,21 @@ handleAction action model = case action of
           case num_ of
             Left err_ -> do
               replyWithMarkdown $ "*Error*\n" <> err_
-              liftIO $ Text.putStrLn err_
+              liftIO $ putLogStrLn err_
             Right num -> do
               !fullName_ <- liftIO $ fullUserName name_
               case fullName_ of
                 Left fname_  -> replyText fname_
-                Right fname_ -> liftIO
-                 (firstDbConnection $ BotField name_ fname_ repo_ num)
-                 >> replyWithMarkdown "*Ok.*"
+                Right fname_ -> liftIO (do
+                    firstDbConnection (BotField name_ fname_ repo_ num)
+                    putLogStrLn $
+                      "Added '" <> name_ <> "/" <> repo_ <> "'")
+                  >> replyWithMarkdown "*Ok.*"
 
         _                   -> replyWithMarkdown "*Incorrect input*"
 
     else
-      liftIO $ Text.putStrLn $! "Nothing added -> " <> txt
+      liftIO $ putLogStrLn $! "Nothing added -> " <> txt
 
     pure Reset
   Stats      -> model <#

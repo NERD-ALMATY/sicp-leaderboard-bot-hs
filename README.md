@@ -13,4 +13,4 @@ extensions
 
 ### TODO
 - Better exception handling
-- More user-friendly
+- More user-friendly interface
