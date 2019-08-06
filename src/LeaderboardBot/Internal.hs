@@ -12,7 +12,7 @@ import           Data.Monoid                     ((<>))
 import           Control.Monad.Reader
 import           Data.Text                       (Text, takeEnd)
 import qualified Data.Text                       as T (length, pack)
-import qualified Data.Text.IO                    as T (putStrLn)
+import qualified Data.Text.IO                    as T (putStr, putStrLn)
 import           Data.Time.Clock
 import qualified Data.Vector                     as V
 import           Database.SQLite.Simple
@@ -21,6 +21,7 @@ import           GitHub.Data.Definitions         (User (..))
 import           GitHub.Data.Name                (Name (..))
 import qualified GitHub.Endpoints.Repos.Contents as Git
 import           GitHub.Endpoints.Users          (userInfoFor)
+import           System.Console.ANSI
 
 -- | Type for DB
 -- username | first and lastname | repo | score
@@ -36,10 +37,15 @@ instance ToRow BotField where
 
 -- | Logging to stdout
 putLogStrLn :: Text -> IO ()
-putLogStrLn txt = do
-  time_ <- getCurrentTime
-  T.putStrLn $ "| " <> (T.pack $ show time_) <> " | " <> txt <>
-    " ..|"
+putLogStrLn !txt = do
+  !time_ <- getCurrentTime
+  setSGR [SetColor Foreground Vivid Green]
+  T.putStr $ "| " <> (T.pack $ show time_) <> " | "
+  setSGR [SetColor Foreground Vivid Red]
+  T.putStr $ txt
+  setSGR [SetColor Foreground Vivid Green]
+  T.putStrLn $ " ..|"
+  setSGR [Reset]
 
 -- |  User / Repo / Path
 data BotConfig = BotConfig !(Text, Text, Text)
@@ -91,7 +97,7 @@ countExt urp@(BotConfig (user_, repo_, _)) (Git.ContentDirectory !items) = do
                             compareExts file_
                          then 1 :: Int else 0 :: Int
     -- Only Scheme and Racket allowed
-    compareExts txt = takeEnd 4 txt == ".scm" || takeEnd 4 txt == ".rkt"
+    compareExts !txt = takeEnd 4 txt == ".scm" || takeEnd 4 txt == ".rkt"
 
 defaultLB :: LeaderBoardM (Either Text Int)
 defaultLB = do

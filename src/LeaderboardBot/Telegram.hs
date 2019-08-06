@@ -123,20 +123,18 @@ handleAction action model = case action of
       liftIO $ putLogStrLn $! "Nothing added -> " <> txt
 
     pure Reset
-  Stats      -> model <#
-    if model == statsModel then do
+  Stats      -> model <# do
       !stats <- liftIO $ fetchStats
-      replyWithMarkdown $ ppStats $ stats
-      pure Reset
-    else do
-      replyWithMarkdown "*There is no added repos.*"
+      either replyWithMarkdown (replyWithMarkdown . ppStats) stats
       pure NoAction
-  UpdateRepo -> model <#
-    if model == statsModel then do
-      liftIO $ updateStats
-      pure Stats
-    else do
-      replyWithMarkdown "*There is no added repos.*"
+  UpdateRepo -> model <# do
+      !stats_ <- liftIO $ fetchStats
+      case stats_ of
+        Left err -> replyWithMarkdown err
+        Right _  -> do
+          liftIO $ updateStats
+          !stats <- liftIO $ fetchStats
+          either replyWithMarkdown (replyWithMarkdown . ppStats) stats
       pure NoAction
 
 run :: Telegram.Token -> IO ()

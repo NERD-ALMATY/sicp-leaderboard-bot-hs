@@ -13,4 +13,5 @@ extensions
 
 ### TODO
 - Better exception handling
+- Write tests
 - More user-friendly interface

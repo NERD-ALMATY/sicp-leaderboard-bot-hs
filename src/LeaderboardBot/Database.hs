@@ -18,7 +18,7 @@ import           Database.SQLite.Simple.FromRow
 
 firstDbConnection :: BotField -> IO ()
 firstDbConnection bField = do
-  !conn <- catch (open "data/board.db") $ \e -> do
+  !conn <- open "data/board.db" `catch` \e -> do
     putLogStrLn $ T.pack $ show (e :: IOException)
     throwIO e
   execute_ conn "CREATE TABLE IF NOT EXISTS board \
@@ -28,15 +28,21 @@ firstDbConnection bField = do
     \(username, fullname, repo, score) VALUES (?,?,?,?)" bField
   close conn
 
-fetchStats :: IO [BotField]
+fetchStats :: IO (Either Text [BotField])
 fetchStats = do
-  !conn <- catch (open "data/board.db") $ \e -> do
-    putLogStrLn $ T.pack $ show (e :: IOException)
+  !conn <- open "data/board.db" `catch` \e -> do
+    putLogStrLn $ (T.pack $ show (e :: IOException)) <> ".."
     throwIO e
-  !r <- query_ conn "SELECT username, fullname, repo, score FROM board \
-    \ORDER BY score DESC" :: IO [BotField]
+  let !queryString = "SELECT username, fullname, repo, score FROM board \
+    \ORDER BY score DESC" :: Query
+  !r <- try (query_ conn queryString :: IO [BotField])
+    :: IO (Either SQLError [BotField])
   close conn
-  pure r
+  case r of
+    Left e   -> do
+      putLogStrLn $ T.pack $ show e
+      pure . Left $ "_There is probably no added repos. Please add one._"
+    Right r_ -> pure $ Right r_
 
 -- | Pretty printer for BotField
 ppStats :: [BotField] -> Text
@@ -47,10 +53,12 @@ ppStats = T.concat . map go
 
 updateStats :: IO ()
 updateStats = do
-  !conn <- open "data/board.db"
-  !r <- query_ conn "SELECT username, fullname, repo, score FROM board"
-    :: IO [BotField]
-  mapM_ (updateStats_ conn) r
+  !conn <- open "data/board.db" `catch` \e -> do
+    putLogStrLn $ (T.pack $ show (e :: IOException)) <> ".."
+    throwIO e
+  !r <- try (query_ conn "SELECT username, fullname, repo, score FROM board")
+    :: IO (Either SQLError [BotField])
+  either (putLogStrLn . T.pack . show) (mapM_ (updateStats_ conn)) r
   close conn
 
 updateStats_ :: Connection -> BotField -> IO ()
