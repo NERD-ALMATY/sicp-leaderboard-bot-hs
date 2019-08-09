@@ -1,5 +1,6 @@
-{-# LANGUAGE BangPatterns      #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module LeaderboardBot.Database
   (firstDbConnection, fetchStats, ppStats, updateStats)
@@ -36,13 +37,12 @@ fetchStats = do
   let !queryString = "SELECT username, fullname, repo, score FROM board \
     \ORDER BY score DESC" :: Query
   !r <- try (query_ conn queryString :: IO [BotField])
-    :: IO (Either SQLError [BotField])
   close conn
   case r of
-    Left e   -> do
+    Left (e :: SomeException) -> do
       putLogStrLn $ T.pack $ show e
       pure . Left $ "_There is probably no added repos. Please add one._"
-    Right r_ -> pure $ Right r_
+    Right r_                  -> pure $ Right r_
 
 -- | Pretty printer for BotField
 ppStats :: [BotField] -> Text
