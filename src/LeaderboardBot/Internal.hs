@@ -1,6 +1,7 @@
 {-# LANGUAGE BangPatterns               #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE QuasiQuotes                #-}
 
 module LeaderboardBot.Internal
   (BotConfig(..), LeaderBoardM(..), runLeaderBoardM, defaultLB, BotField(..)
@@ -9,6 +10,7 @@ module LeaderboardBot.Internal
 
 import           Data.Monoid                     ((<>))
 
+import           Control.Monad.Catch
 import           Control.Monad.Reader
 import           Data.Text                       (Text, takeEnd)
 import qualified Data.Text                       as T (length, pack)
@@ -22,6 +24,7 @@ import           GitHub.Data.Name                (Name (..))
 import qualified GitHub.Endpoints.Repos.Contents as Git
 import           GitHub.Endpoints.Users          (userInfoFor)
 import           System.Console.ANSI
+import           Text.RE.TDFA.Text
 
 -- | Type for DB
 -- username | first and lastname | repo | score
@@ -52,10 +55,19 @@ data BotConfig = BotConfig !(Text, Text, Text)
 
 newtype LeaderBoardM a = LeaderBoardM
   { _runLeaderBoardM :: ReaderT BotConfig IO a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadReader BotConfig)
+  deriving (Functor, Applicative, Monad, MonadIO,
+            MonadReader BotConfig)
 
 runLeaderBoardM :: LeaderBoardM a -> BotConfig -> IO a
 runLeaderBoardM = runReaderT . _runLeaderBoardM
+
+instance MonadThrow LeaderBoardM where
+  throwM = LeaderBoardM . lift . throwM
+
+instance MonadCatch LeaderBoardM where
+  catch (LeaderBoardM m) f =
+    LeaderBoardM $ m `catch` (_runLeaderBoardM . f)
+
 
 contentsForTemp :: Text -> Text -> Text
                 -> IO (Either Git.Error Git.Content)
